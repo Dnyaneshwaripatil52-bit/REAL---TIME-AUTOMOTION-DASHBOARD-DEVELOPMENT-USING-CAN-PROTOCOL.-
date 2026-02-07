@@ -1,170 +1,179 @@
-	#include<lpc21xx.h>
-
-#include"header.h"
+																							   #include"header.h"
 
 CAN2_ST M1;
 
-int FLAG_HEADLIGHT;
-
-int FLAG_INDICATOR_RIGHT;
-
-int FLAG_INDICATOR_LEFT;
-
+u32 RECEIVER_FLAG;
 
 int main()
 
 {
 
-	int HEADLIGHT_TOGGLE=1;
+	float temp,result;
 
-	int INDICATOR_RIGHT_TOGGLE=1;
+	u32 spd;
 
-	int INDICATOR_LEFT_TOGGLE=1;
-
-	adc_init();
+	lcd_init();
 
 	can2_init();
 
-	ext_init();
+	EN_CAN2_INTERRUPT();
 
-	interrupt_confg();
+	lcd_cgram();
+
+	lcd_cmd(0x80);
+
+	lcd_string("SPD:");
+
+	lcd_cmd(0x88);
+
+	lcd_string("TEMP:");
+
+	lcd_cmd(0xC7);
+
+	lcd_data(3);
 
 	while(1)
 
 	{
 
-		C2TID1=TEMPERATURE_ID;
-
-		C2TFI1=4<<16;
-
-		C2TDA1=adc_read(1);
-
-		C2CMR=0x21;
-
-
-		delay_ms(100);		
-
-		C2TID1=SPEED_ID;		
-
-		C2TFI1=4<<16;
-
-		C2TDA1=adc_read(2);	
-
-		C2CMR=0x21;
-
-		delay_ms(100);
-
-
-		if(FLAG_HEADLIGHT)
+		if(RECEIVER_FLAG)
 
 		{
 
-		 	FLAG_HEADLIGHT=0;
+			RECEIVER_FLAG=0;
 
-			C2TID1=HEADLIGHT_ID;
-
-			C2TFI1=4<<16;
-
-			if(HEADLIGHT_TOGGLE)
+		    if(M1.ID==TEMPERATURE_ID)
 
 			{
 
-				C2TDA1=HEADLIGHT_ON;
+				lcd_cmd(0x8D);
 
-				HEADLIGHT_TOGGLE=0;		
+				temp=(M1.BYTEA*3.3)/1023;
+
+				result=(temp-0.5)/0.01;
+
+				lcd_data(((int)result/100)+48);
+
+				lcd_data((((int)result/10)%10)+48);
+
+				lcd_data(((int)result%10)+48);
 
 			}
 
-			else
+			if(M1.ID==SPEED_ID)
 
 			{
 
-				C2TDA1=HEADLIGHT_OFF;
+				lcd_cmd(0x84);
 
-				HEADLIGHT_TOGGLE=1;		
+				spd=(M1.BYTEA*280)/1023;
 
-			}	
+				lcd_data((spd/100)+48);
 
-			C2CMR=0x21;
+				lcd_data(((spd/10)%10)+48);
 
-		}
-
-	  // delay_ms(2000);
-
-		if(FLAG_INDICATOR_RIGHT)
-
-		{
-
-			FLAG_INDICATOR_RIGHT=0;
-
-	   		C2TID1=INDICATOR_ID;
-
-			C2TFI1=4<<16;
-
-	   		if(INDICATOR_RIGHT_TOGGLE)
-
-			{
-
-				C2TDA1=INDICATOR_RIGHT_ON;
-
-				INDICATOR_RIGHT_TOGGLE=0;
-
-				INDICATOR_LEFT_TOGGLE=1;		
+				lcd_data((spd%10)+48);
 
 			}
 
-			else
+			if(M1.ID==HEADLIGHT_ID)
 
 			{
 
-				C2TDA1=INDICATOR_RIGHT_OFF;
+				if(M1.BYTEA==HEADLIGHT_ON)
 
-				INDICATOR_RIGHT_TOGGLE=1;		
+				{
 
-			}	
+					lcd_cmd(0xC8);
 
-			C2CMR=0x21;
+				    lcd_data(4);
 
-		}
+				}
 
-	   //delay_ms(2000);
+			  	else if(M1.BYTEA==HEADLIGHT_OFF)
 
-	   if(FLAG_INDICATOR_LEFT)
+				{
 
-		{
+				    lcd_cmd(0xC8);
 
-	   		FLAG_INDICATOR_LEFT=0;
+				    lcd_data(' ');
 
-	   		C2TID1=INDICATOR_ID;
-
-			C2TFI1=4<<16;
-
-	   		if(INDICATOR_LEFT_TOGGLE)
-
-			{
-
-				C2TDA1=INDICATOR_LEFT_ON;
-
-				INDICATOR_LEFT_TOGGLE=0;
-
-				INDICATOR_RIGHT_TOGGLE=1;		
+				}
 
 			}
 
-			else
+			if(M1.ID==INDICATOR_ID)
 
 			{
 
-				C2TDA1=INDICATOR_LEFT_OFF;
+				if(M1.BYTEA==INDICATOR_RIGHT_ON)
 
-				INDICATOR_LEFT_TOGGLE=1;		
+				{
 
-			}	
+					lcd_cmd(0xC1);
 
-			C2CMR=0x21;
+					lcd_data(' ');
 
-		}
+					lcd_data(' ');
+
+					lcd_cmd(0xCD);
+
+				    lcd_data(0);
+
+					lcd_data(1);
+
+
+				}
+
+			  	else if(M1.BYTEA==INDICATOR_LEFT_ON)
+
+				{
+
+	  				lcd_cmd(0xC1);
+
+				    lcd_data(2);
+
+					lcd_data(0);
+
+					lcd_cmd(0xCD);
+
+					lcd_data(' ');
+
+					lcd_data(' ');
+
+				}
+
+				else if(M1.BYTEA==INDICATOR_RIGHT_OFF)
+
+				{
+
+	  				lcd_cmd(0xCD);
+
+				    lcd_data(' ');
+
+					lcd_data(' ');
+
+				}
+
+				else if(M1.BYTEA==INDICATOR_LEFT_OFF)
+
+				{
+
+	  				lcd_cmd(0xC1);
+
+				    lcd_data(' ');
+
+					lcd_data(' ');
+
+				}
+
+			}
+
+	    }			
 
 	}
 
 }
+
+
+
